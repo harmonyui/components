@@ -76,10 +76,6 @@ export const add = new Command()
         }
       }
 
-      if (!options.components?.length) {
-        options.components = await promptForRegistryComponents(options)
-      }
-
       let { errors, config } = await preFlightAdd(options)
 
       // No components.json file. Prompt the user to run init.
@@ -145,6 +141,13 @@ export const add = new Command()
         )
       }
 
+      if (!options.components?.length) {
+        options.components = await promptForRegistryComponents(
+          options,
+          config.registry
+        )
+      }
+
       await addComponents(options.components, config, options)
 
       // If we're adding a single component and it's from the v0 registry,
@@ -159,9 +162,10 @@ export const add = new Command()
   })
 
 async function promptForRegistryComponents(
-  options: z.infer<typeof addOptionsSchema>
+  options: z.infer<typeof addOptionsSchema>,
+  registryUrl: string
 ) {
-  const registryIndex = await getRegistryIndex()
+  const registryIndex = await getRegistryIndex(registryUrl)
   if (!registryIndex) {
     logger.break()
     handleError(new Error("Failed to fetch registry index."))

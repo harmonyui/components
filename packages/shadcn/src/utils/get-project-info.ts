@@ -11,6 +11,8 @@ import fg from "fast-glob"
 import fs from "fs-extra"
 import { loadConfig } from "tsconfig-paths"
 
+import { promptRegistryUrl } from "./registry/prompt-registry-url"
+
 type ProjectInfo = {
   framework: Framework
   isSrcDir: boolean
@@ -200,7 +202,9 @@ export async function getTsConfig() {
 export async function getProjectConfig(
   cwd: string,
   defaultProjectInfo: ProjectInfo | null = null
-): Promise<Config | null> {
+): Promise<Config | string> {
+  const registryUrl = await promptRegistryUrl()
+
   // Check for existing component config.
   const [existingConfig, projectInfo] = await Promise.all([
     getConfig(cwd),
@@ -218,14 +222,15 @@ export async function getProjectConfig(
     !projectInfo.tailwindConfigFile ||
     !projectInfo.tailwindCssFile
   ) {
-    return null
+    return registryUrl
   }
 
   const config: RawConfig = {
-    $schema: "https://ui.shadcn.com/schema.json",
+    $schema: `${registryUrl}/schema.json`,
     rsc: projectInfo.isRSC,
     tsx: projectInfo.isTsx,
     style: "new-york",
+    registry: registryUrl,
     tailwind: {
       config: projectInfo.tailwindConfigFile,
       baseColor: "zinc",

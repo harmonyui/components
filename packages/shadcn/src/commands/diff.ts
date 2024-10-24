@@ -57,7 +57,7 @@ export const diff = new Command()
         process.exit(1)
       }
 
-      const registryIndex = await getRegistryIndex()
+      const registryIndex = await getRegistryIndex(config.registry)
 
       if (!registryIndex) {
         handleError(new Error("Failed to fetch registry index."))
@@ -148,8 +148,11 @@ async function diffComponent(
   component: z.infer<typeof registryIndexSchema>[number],
   config: Config
 ) {
-  const payload = await fetchTree(config.style, [component])
-  const baseColor = await getRegistryBaseColor(config.tailwind.baseColor)
+  const payload = await fetchTree(config.style, [component], config.registry)
+  const baseColor = await getRegistryBaseColor(
+    config.tailwind.baseColor,
+    config.registry
+  )
 
   if (!payload) {
     return []

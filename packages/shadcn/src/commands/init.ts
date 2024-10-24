@@ -101,10 +101,17 @@ export async function runInit(
     projectInfo = await getProjectInfo(options.cwd)
   }
 
-  const projectConfig = await getProjectConfig(options.cwd, projectInfo)
-  const config = projectConfig
-    ? await promptForMinimalConfig(projectConfig, options)
-    : await promptForConfig(await getConfig(options.cwd))
+  const projectConfigOrRegistryUrl = await getProjectConfig(
+    options.cwd,
+    projectInfo
+  )
+  const config =
+    typeof projectConfigOrRegistryUrl !== "string"
+      ? await promptForMinimalConfig(projectConfigOrRegistryUrl, options)
+      : await promptForConfig(
+          await getConfig(options.cwd),
+          projectConfigOrRegistryUrl
+        )
 
   if (!options.yes) {
     const { proceed } = await prompts({
@@ -153,9 +160,12 @@ export async function runInit(
   return fullConfig
 }
 
-async function promptForConfig(defaultConfig: Config | null = null) {
+async function promptForConfig(
+  defaultConfig: Config | null = null,
+  registryUrl: string
+) {
   const [styles, baseColors] = await Promise.all([
-    getRegistryStyles(),
+    getRegistryStyles(registryUrl),
     getRegistryBaseColors(),
   ])
 
@@ -248,8 +258,9 @@ async function promptForConfig(defaultConfig: Config | null = null) {
   ])
 
   return rawConfigSchema.parse({
-    $schema: "https://ui.shadcn.com/schema.json",
+    $schema: `${registryUrl}/schema.json`,
     style: options.style,
+    registry: registryUrl,
     tailwind: {
       config: options.tailwindConfig,
       css: options.tailwindCss,
@@ -279,7 +290,7 @@ async function promptForMinimalConfig(
 
   if (!opts.defaults) {
     const [styles, baseColors] = await Promise.all([
-      getRegistryStyles(),
+      getRegistryStyles(defaultConfig.registry),
       getRegistryBaseColors(),
     ])
 
@@ -325,6 +336,7 @@ async function promptForMinimalConfig(
   return rawConfigSchema.parse({
     $schema: defaultConfig?.$schema,
     style,
+    registry: defaultConfig.registry,
     tailwind: {
       ...defaultConfig?.tailwind,
       baseColor,

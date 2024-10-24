@@ -54,7 +54,7 @@ export async function updateFiles(
 
   const [projectInfo, baseColor] = await Promise.all([
     getProjectInfo(config.resolvedPaths.cwd),
-    getRegistryBaseColor(config.tailwind.baseColor),
+    getRegistryBaseColor(config.tailwind.baseColor, config.registry),
   ])
 
   const filesCreated = []
