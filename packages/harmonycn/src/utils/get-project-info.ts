@@ -226,7 +226,7 @@ export async function getProjectConfig(
   }
 
   const config: RawConfig = {
-    $schema: `${registryUrl}/schema.json`,
+    $schema: `${registryUrl}/public/schema.json`,
     rsc: projectInfo.isRSC,
     tsx: projectInfo.isTsx,
     style: "new-york",

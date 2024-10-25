@@ -14,7 +14,9 @@
         "https_proxy",
         "V0_URL",
         "V0_EDIT_SECRET",
-        "DEPLOYMENT_PROTECTION_BYPASS"
+        "DEPLOYMENT_PROTECTION_BYPASS",
+        "PRIVATE_KEY",
+        "GITHUB_APP_ID"
       ],
       "outputs": ["dist/**", ".next/**"]
     },

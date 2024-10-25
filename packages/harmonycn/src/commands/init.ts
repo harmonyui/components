@@ -258,7 +258,7 @@ async function promptForConfig(
   ])
 
   return rawConfigSchema.parse({
-    $schema: `${registryUrl}/schema.json`,
+    $schema: `${registryUrl}/public/schema.json`,
     style: options.style,
     registry: registryUrl,
     tailwind: {

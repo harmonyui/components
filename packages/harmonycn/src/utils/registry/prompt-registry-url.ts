@@ -16,7 +16,7 @@ const promptRegistryUrlSchema = z
     }
     const [, username, repo] = result
 
-    return `https://raw.githubusercontent.com/${username}/${repo}/refs/heads/master/public`
+    return `https://raw.githubusercontent.com/${username}/${repo}/refs/heads/master`
   })
 export const promptRegistryUrl = async (): Promise<string> => {
   const options = await prompts({
