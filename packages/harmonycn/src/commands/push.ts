@@ -86,7 +86,6 @@ export const push = new Command()
         })
       }
 
-      let shouldUpdateAppIndex = false
       if (errors[ERRORS.MISSING_DIR_OR_EMPTY_PROJECT]) {
         const { projectPath } = await createProject({
           cwd: options.cwd,
@@ -109,10 +108,6 @@ export const push = new Command()
           isNewProject: true,
           srcDir: options.srcDir,
         })
-
-        shouldUpdateAppIndex =
-          options.components?.length === 1 &&
-          !!options.components[0].match(/\/chat\/b\//)
       }
 
       if (!config) {
@@ -122,27 +117,8 @@ export const push = new Command()
       }
 
       const accessToken = await getAuth(options.cwd)
-      const octokit = getOctokit(accessToken)
-      const repo = await promptRepositoryToPushTo(octokit)
 
-      if (!options.components?.length) {
-        options.components = await promptForRegistryComponents(
-          options,
-          config.registry
-        )
-      }
-
-      await updateComponents(
-        options.components,
-        {
-          branch: repo.default_branch,
-          owner: repo.owner.login,
-          repo: repo.name,
-          octokit,
-        },
-        config,
-        options
-      )
+      await updateComponents(accessToken, config, options)
     } catch (error) {
       logger.break()
       handleError(error)
@@ -163,10 +139,9 @@ async function promptRepositoryToPushTo(octokit: OctokitConfig["octokit"]) {
 }
 
 export async function updateComponents(
-  components: string[],
-  octokitConfig: OctokitConfig,
+  accessToken: string,
   config: Config,
-  options: { silent: boolean }
+  options: { silent: boolean; all: boolean; components?: string[] }
 ) {
   const registrySpinner = spinner(`Checking registry.`, {
     silent: options.silent,
@@ -177,10 +152,32 @@ export async function updateComponents(
     handleError(new Error("Failed to fetch registry index."))
     return
   }
-  const componentUpdates = await findUpdatedComponents(config, registryIndex)
+  let componentUpdates = await findUpdatedComponents(config, registryIndex)
   registrySpinner?.succeed()
-  logger.info(`Found ${componentUpdates.length} update(s).`)
 
+  if (componentUpdates.length === 0) {
+    logger.info("No updates found.")
+    return
+  }
+
+  logger.info(`Found ${componentUpdates.length} update(s).`)
+  if (!options.all && componentUpdates.length > 1) {
+    const updateOptions = await prompts({
+      type: "multiselect",
+      name: "updates",
+      message: "Select the components you would like to update.",
+      choices: componentUpdates.map(({ name }) => ({
+        title: name,
+        value: name,
+      })),
+    })
+    const selectedUpdates = z.array(z.string()).parse(updateOptions.updates)
+    componentUpdates = componentUpdates.filter((update) =>
+      selectedUpdates.find((name) => update.name === name)
+    )
+  }
+
+  logger.info("Updating the following components:")
   const files: { content: string; path: string }[] = []
   for (const update of componentUpdates) {
     logger.info(`- ${update.name}`)
@@ -195,14 +192,22 @@ export async function updateComponents(
 
   const registryItems = componentUpdates.map(({ component }) => component)
   if (files.length === 0 || registryItems.length === 0) {
-    logger.info("No updates found.")
+    logger.info("No updates selected.")
     return
   }
+
+  const octokit = getOctokit(accessToken)
+  const repo = await promptRepositoryToPushTo(octokit)
 
   await createPullRequest(
     nonEmptyFiles.parse(files),
     nonEmptyRegistryIndex.parse(registryItems),
-    octokitConfig,
+    {
+      branch: repo.default_branch,
+      owner: repo.owner.login,
+      repo: repo.name,
+      octokit,
+    },
     config.style,
     options
   )
