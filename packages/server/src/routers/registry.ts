@@ -12,6 +12,11 @@ const updateSchema = z.object({
     .nonempty(),
   style: z.string(),
   registry: registryIndexSchema.nonempty(),
+  repo: z.object({
+    branch: z.string(),
+    owner: z.string(),
+    repo: z.string(),
+  }),
 })
 export const registryRouter = createTRPCRouter({
   update: publicProcedure
@@ -19,10 +24,11 @@ export const registryRouter = createTRPCRouter({
     .mutation(async ({ input, ctx: { octokit, installationId } }) => {
       const config: OctokitWithConfig = {
         installationId,
-        branch: "master",
-        owner: "bradofrado",
-        repo: "component-registry",
+        // branch: "master",
+        // owner: "bradofrado",
+        // repo: "component-registry",
         octokit,
+        ...input.repo,
       }
       const readFile = async (path: string) => {
         const content = input.files.find((file) => file.path === path)?.content

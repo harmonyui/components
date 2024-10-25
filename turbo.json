@@ -16,7 +16,8 @@
         "V0_EDIT_SECRET",
         "DEPLOYMENT_PROTECTION_BYPASS",
         "PRIVATE_KEY",
-        "GITHUB_APP_ID"
+        "GITHUB_APP_ID",
+        "GITHUB_APP_CLIENT_ID"
       ],
       "outputs": ["dist/**", ".next/**"]
     },

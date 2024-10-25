@@ -6,14 +6,19 @@ import { handleError } from "@/src/utils/handle-error"
 import { highlighter } from "@/src/utils/highlighter"
 import { logger } from "@/src/utils/logger"
 import { getRegistryIndex } from "@/src/utils/registry"
+import { Octokit } from "@octokit/rest"
 import { Command } from "commander"
 import prompts from "prompts"
 import { z } from "zod"
 
 import { preFlightUpdate } from "../preflights/preflight-update"
-import { client } from "../trpc"
+import { getAuth } from "../utils/auth/get-auth"
 import { findUpdatedComponents } from "../utils/diff-component"
 import { Config } from "../utils/get-config"
+import { getRepositories } from "../utils/github/get-repos"
+import { OctokitConfig, getOctokit } from "../utils/github/github"
+import { createPullRequestFromFiles } from "../utils/github/pull-request"
+import { buildStyles } from "../utils/registry/build-registry"
 import { registryIndexSchema } from "../utils/registry/schema"
 import { spinner } from "../utils/spinner"
 
@@ -116,6 +121,10 @@ export const push = new Command()
         )
       }
 
+      const accessToken = await getAuth(options.cwd)
+      const octokit = getOctokit(accessToken)
+      const repo = await promptRepositoryToPushTo(octokit)
+
       if (!options.components?.length) {
         options.components = await promptForRegistryComponents(
           options,
@@ -123,15 +132,39 @@ export const push = new Command()
         )
       }
 
-      await updateComponents(options.components, config, options)
+      await updateComponents(
+        options.components,
+        {
+          branch: repo.default_branch,
+          owner: repo.owner.login,
+          repo: repo.name,
+          octokit,
+        },
+        config,
+        options
+      )
     } catch (error) {
       logger.break()
       handleError(error)
     }
   })
 
+async function promptRepositoryToPushTo(octokit: OctokitConfig["octokit"]) {
+  const repos = await getRepositories(octokit)
+
+  const options = await prompts({
+    type: "select",
+    name: "repo",
+    message: "Select the repository to push to.",
+    choices: repos.map((repo, i) => ({ title: repo.name, value: i })),
+  })
+
+  return repos[z.number().parse(options.repo)]
+}
+
 export async function updateComponents(
   components: string[],
+  octokitConfig: OctokitConfig,
   config: Config,
   options: { silent: boolean }
 ) {
@@ -169,6 +202,7 @@ export async function updateComponents(
   await createPullRequest(
     nonEmptyFiles.parse(files),
     nonEmptyRegistryIndex.parse(registryItems),
+    octokitConfig,
     config.style,
     options
   )
@@ -181,6 +215,7 @@ const nonEmptyRegistryIndex = registryIndexSchema.nonempty()
 async function createPullRequest(
   files: z.infer<typeof nonEmptyFiles>,
   registry: z.infer<typeof nonEmptyRegistryIndex>,
+  config: OctokitConfig,
   style: string,
   options: { silent: boolean }
 ) {
@@ -188,11 +223,18 @@ async function createPullRequest(
     silent: options.silent,
   })?.start()
   try {
-    const pullRequestUrl = await client.registry.update.mutate({
-      files,
-      registry,
-      style,
-    })
+    const readFile = async (path: string) => {
+      const content = files.find((file) => file.path === path)?.content
+
+      return content ?? ""
+    }
+
+    const writeFile = async (path: string, content: string) => {
+      files.push({ path, content })
+    }
+
+    await buildStyles(registry, style, readFile, writeFile)
+    const pullRequestUrl = await createPullRequestFromFiles(files, config)
     pullRequestSpinner?.succeed()
 
     logger.success(`Pull Request created: ${highlighter.info(pullRequestUrl)}`)
