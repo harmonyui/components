@@ -16,6 +16,8 @@ import { Command } from "commander"
 import { diffLines, type Change } from "diff"
 import { z } from "zod"
 
+import { diffComponent, findUpdatedComponents } from "../utils/diff-component"
+
 const updateOptionsSchema = z.object({
   component: z.string().optional(),
   yes: z.boolean(),
@@ -65,34 +67,10 @@ export const diff = new Command()
       }
 
       if (!options.component) {
-        const targetDir = config.resolvedPaths.components
-
-        // Find all components that exist in the project.
-        const projectComponents = registryIndex.filter((item) => {
-          for (const file of item.files ?? []) {
-            const filePath = path.resolve(
-              targetDir,
-              typeof file === "string" ? file : file.path
-            )
-            if (existsSync(filePath)) {
-              return true
-            }
-          }
-
-          return false
-        })
-
-        // Check for updates.
-        const componentsWithUpdates = []
-        for (const component of projectComponents) {
-          const changes = await diffComponent(component, config)
-          if (changes.length) {
-            componentsWithUpdates.push({
-              name: component.name,
-              changes,
-            })
-          }
-        }
+        const componentsWithUpdates = await findUpdatedComponents(
+          config,
+          registryIndex
+        )
 
         if (!componentsWithUpdates.length) {
           logger.info("No updates found.")
@@ -143,65 +121,6 @@ export const diff = new Command()
       handleError(error)
     }
   })
-
-async function diffComponent(
-  component: z.infer<typeof registryIndexSchema>[number],
-  config: Config
-) {
-  const payload = await fetchTree(config.style, [component], config.registry)
-  const baseColor = await getRegistryBaseColor(
-    config.tailwind.baseColor,
-    config.registry
-  )
-
-  if (!payload) {
-    return []
-  }
-
-  const changes = []
-
-  for (const item of payload) {
-    const targetDir = await getItemTargetPath(config, item)
-
-    if (!targetDir) {
-      continue
-    }
-
-    for (const file of item.files ?? []) {
-      const filePath = path.resolve(
-        targetDir,
-        typeof file === "string" ? file : file.path
-      )
-
-      if (!existsSync(filePath)) {
-        continue
-      }
-
-      const fileContent = await fs.readFile(filePath, "utf8")
-
-      if (typeof file === "string" || !file.content) {
-        continue
-      }
-
-      const registryContent = await transform({
-        filename: file.path,
-        raw: file.content,
-        config,
-        baseColor,
-      })
-
-      const patch = diffLines(registryContent as string, fileContent)
-      if (patch.length > 1) {
-        changes.push({
-          filePath,
-          patch,
-        })
-      }
-    }
-  }
-
-  return changes
-}
 
 async function printDiff(diff: Change[]) {
   diff.forEach((part) => {

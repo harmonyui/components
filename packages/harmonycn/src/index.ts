@@ -5,6 +5,7 @@ import { init } from "@/src/commands/init"
 import { Command } from "commander"
 
 import packageJson from "../package.json"
+import { push } from "./commands/push"
 
 process.on("SIGINT", () => process.exit(0))
 process.on("SIGTERM", () => process.exit(0))
@@ -19,7 +20,7 @@ async function main() {
       "display the version number"
     )
 
-  program.addCommand(init).addCommand(add).addCommand(diff)
+  program.addCommand(init).addCommand(add).addCommand(diff).addCommand(push)
 
   program.parse()
 }

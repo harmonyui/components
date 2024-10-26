@@ -2,7 +2,7 @@ import { highlighter } from "@/src/utils/highlighter"
 import { logger } from "@/src/utils/logger"
 import { z } from "zod"
 
-export function handleError(error: unknown) {
+export function handleError(error: unknown): never {
   logger.error(
     `Something went wrong. Please check the error below for more details.`
   )
