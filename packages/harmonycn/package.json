@@ -1,6 +1,6 @@
 {
   "name": "harmonycn",
-  "version": "0.0.2",
+  "version": "0.1.4",
   "description": "Create your own component registry.",
   "publishConfig": {
     "access": "public"
@@ -33,7 +33,7 @@
   "scripts": {
     "withenv": "dotenv -e ../../.env --",
     "dev": "pnpm withenv tsx src/index.ts",
-    "build": "tsup",
+    "build": "pnpm withenv tsup",
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist && rimraf components",
     "start:dev": "cross-env REGISTRY_URL=http://localhost:3333/r node dist/index.js",
@@ -52,7 +52,6 @@
     "@babel/core": "^7.22.1",
     "@babel/parser": "^7.22.6",
     "@babel/plugin-transform-typescript": "^7.22.5",
-    "@harmonycn/server": "workspace:*",
     "@octokit/core": "^6.1.2",
     "@octokit/rest": "^21.0.2",
     "@trpc/client": "^10.45.2",

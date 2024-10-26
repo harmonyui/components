@@ -41,7 +41,7 @@ export const push = new Command()
     "the working directory. defaults to the current directory.",
     process.cwd()
   )
-  .option("-a, --all", "update all available components", false)
+  .option("-a, --all", "update all available components", true)
   .option("-s, --silent", "mute output.", false)
   .option(
     "--src-dir",

@@ -9,4 +9,7 @@ export default defineConfig({
   minify: true,
   target: "esnext",
   outDir: "dist",
+  env: {
+    ...(process.env as Record<string, string>),
+  },
 })
